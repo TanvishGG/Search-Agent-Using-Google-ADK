@@ -1,0 +1,4 @@
+venv
+search-agent/__pycache__/
+search-agent/data/*
+search-agent/.env
