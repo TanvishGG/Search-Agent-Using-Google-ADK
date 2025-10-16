@@ -35,17 +35,23 @@ cd Search-Agent-Using-Google-ADK
 python -m venv venv
 ```
 
-3. Install dependencies:
+3. Set up environment variables:
+go to search-agent folder, then rename the example env to `.env` and add your API key:
+```
+GOOGLE_API_KEY=your_google_api_key
+```
+
+4. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Run the App:
+5. Run the App:
 ```bash
 adk web
 ```
 
-5. Open the URL from the terminal
+6. Open the URL from the terminal
 
 ## Dependencies
 
