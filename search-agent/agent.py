@@ -12,111 +12,41 @@ HEADERS = {
 TIMEOUT = 10
 
 
-def search_web(query: str) -> dict:
-    """Search the web - tries Google first, falls back to DuckDuckGo if no results."""
+def search_google(query: str) -> dict:
+    """Search using Google Custom Search API (CSE)."""
+    api_key = os.environ.get('SEARCH_API_KEY')
+    search_engine_id = os.environ.get('GOOGLE_CSE_ID')
+
+    if not api_key or not search_engine_id:
+        return {'query': query, 'error': 'Missing SEARCH_API_KEY or GOOGLE_CSE_ID'}
+
     try:
-        google_results = _search_google(query)
+        response = requests.get(
+            'https://www.googleapis.com/customsearch/v1',
+            params={'key': api_key, 'cx': search_engine_id, 'q': query, 'num': 10},
+            headers=HEADERS,
+            timeout=TIMEOUT
+        )
+        response.raise_for_status()
         
-        if google_results.get('results'):
-            return {
-                'query': query,
-                'source': 'google',
-                'results': google_results['results'],
-                'total_found': len(google_results['results'])
-            }
+        data = response.json()
+        results = [
+            {'title': item.get('title', ''), 'url': item.get('link', ''), 'snippet': item.get('snippet', '')}
+            for item in data.get('items', [])
+        ]
         
-        duckduckgo_results = _search_duckduckgo(query)
-        
+        total = data.get('searchInformation', {}).get('totalResults')
         return {
             'query': query,
-            'source': 'duckduckgo',
-            'results': duckduckgo_results['results'],
-            'total_found': len(duckduckgo_results['results'])
+            'source': 'google',
+            'results': results,
+            'total_found': int(total) if total else len(results)
         }
-        
+
+    except requests.RequestException as e:
+        return {'query': query, 'error': f'Request failed: {str(e)}'}
     except Exception as e:
-        return {'error': str(e), 'query': query}
-
-
-def _search_google(query: str) -> dict:
-    """Internal: Search Google for a query."""
-    try:
-        url = f"https://www.google.com/search?q={quote_plus(query)}&num=10"
-        response = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-
-        if response.status_code != 200:
-            return {'results': []}
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        results = []
-
-        for result in soup.find_all('div', {'data-sokoban-container': True}):
-            try:
-                title_elem = result.find('h3')
-                link_container = result.find('a', href=True)
-                
-                if title_elem and link_container:
-                    results.append({
-                        'title': title_elem.get_text().strip(),
-                        'url': link_container.get('href', ''),
-                        'snippet': ''
-                    })
-            except:
-                continue
-        
-        if not results:
-            for result in soup.find_all('div', class_='g'):
-                try:
-                    title_elem = result.find('h3')
-                    link_elem = result.find('a', href=True)
-                    snippet_elem = result.find('span', class_='aCOpRe')
-
-                    if title_elem and link_elem:
-                        results.append({
-                            'title': title_elem.get_text().strip(),
-                            'url': link_elem.get('href', ''),
-                            'snippet': snippet_elem.get_text().strip() if snippet_elem else ''
-                        })
-                except:
-                    continue
-
-        return {'results': results}
-
-    except Exception as e:
-        return {'results': []}
-
-
-def _search_duckduckgo(query: str) -> dict:
-    """Internal: Search DuckDuckGo for a query."""
-    try:
-        url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
-        response = requests.get(url, headers=HEADERS, timeout=TIMEOUT)
-
-        if response.status_code != 200:
-            return {'results': []}
-
-        soup = BeautifulSoup(response.text, 'html.parser')
-        results = []
-
-        for result in soup.find_all('div', class_='result'):
-            try:
-                title_elem = result.find('a', class_='result__a')
-                link_elem = result.find('a', class_='result__url')
-                snippet_elem = result.find('span', class_='result__snippet')
-
-                if title_elem and link_elem:
-                    results.append({
-                        'title': title_elem.get_text().strip(),
-                        'url': link_elem.get('href', ''),
-                        'snippet': snippet_elem.get_text().strip() if snippet_elem else ''
-                    })
-            except:
-                continue
-
-        return {'results': results}
-
-    except Exception as e:
-        return {'results': []}
+        return {'query': query, 'error': str(e)}
 
 
 
@@ -432,7 +362,7 @@ root_agent = Agent(
     description='A helpful search agent that can search the web and answer questions.',
     instruction='You are an advanced search agent. Use the scraping tools to search the web, GitHub, Reddit, Stack Overflow, and Wikipedia. You can also fetch content from URLs and read/write files in the data directory. Always try to use the tools to get the most accurate and up-to-date information.',
     tools=[
-        search_web,
+        search_google,
         search_github,
         search_reddit,
         search_reddit_r,

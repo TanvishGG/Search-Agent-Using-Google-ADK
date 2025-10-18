@@ -9,7 +9,7 @@ This project implements a sophisticated, autonomous search agent powered by **Go
 ### What Makes It Special
 
 **🔗 Multi-Source Search**: Instead of relying on a single search engine, the agent can search across:
-- Google & DuckDuckGo (with intelligent fallback)
+- Google
 - GitHub repositories
 - Reddit communities and discussions
 - Stack Overflow questions and answers
@@ -36,10 +36,17 @@ python -m venv venv
 ```
 
 3. Set up environment variables:
-go to search-agent folder, then rename the example env to `.env` and add your API key:
+Go to the search-agent folder, then create a `.env` file based on `.env.example` and add your Google API credentials:
 ```
-GOOGLE_API_KEY=your_google_api_key
+GOOGLE_GENAI_USE_VERTEXAI=0
+GOOGLE_API_KEY=your_google_genai_api_key
+GOOGLE_CSE_ID=your_google_custom_search_engine_id
+SEARCH_API_KEY=your_google_search_api_key
 ```
+- **GOOGLE_GENAI_USE_VERTEXAI**: Set to 0 to use standard Google AI API (or 1 for Vertex AI)
+- **GOOGLE_API_KEY**: Your Google Gemini API key. Get it from [Google AI Studio](https://aistudio.google.com/app/apikey)
+- **GOOGLE_CSE_ID**: Your Google Custom Search Engine ID. Create a custom search engine at [Google Custom Search](https://programmablesearchengine.google.com/)
+- **SEARCH_API_KEY**: Your Google Search API key for programmatic search access. Get it from [Google Cloud Console](https://console.cloud.google.com/)
 
 4. Install dependencies:
 ```bash
@@ -77,14 +84,12 @@ Search-Agent-Using-Google-ADK/
 
 The search agent includes the following tools that can be used autonomously:
 
-#### `search_web(query: str) -> dict`
-Performs a web search with intelligent fallback.
+#### `search_google(query: str) -> dict`
+Performs a web search using Google Custom Search API (CSE).
 - **Input**: `query` - Search query string
-- **Output**: Dictionary with query, source (google/duckduckgo), results, and total count
-- **Features**:
-  - Tries Google first
-  - Falls back to DuckDuckGo if no results found
-  - Returns structured results with title, URL, and snippet
+- **Output**: Dictionary with query, source, results, and total count
+- **Uses**: `SEARCH_API_KEY` and `GOOGLE_CSE_ID` environment variables
+- **Returns per result**: title, URL, snippet
 
 #### `search_github(query: str, sort: str) -> dict`
 Searches GitHub for repositories.
@@ -100,7 +105,7 @@ Searches Reddit for posts across all subreddits.
   - `query` - Search query string
   - `sort` - Sort by (default: "relevance")
 - **Output**: Dictionary with query and post results
-- **Returns per post**: title, URL, subreddit, score, comments, author, text excerpt
+- **Returns per post**: title, URL, subreddit, score, num_comments, author, selftext (truncated to 500 chars)
 
 #### `search_reddit_r(subreddit: str, query: str, sort: str) -> dict`
 Searches within a specific subreddit.
@@ -109,7 +114,7 @@ Searches within a specific subreddit.
   - `query` - Search query string
   - `sort` - Sort by (default: "relevance")
 - **Output**: Dictionary with query, subreddit, and post results
-- **Returns per post**: title, URL, score, comments, author, text excerpt
+- **Returns per post**: title, URL, score, num_comments, author, selftext (truncated to 500 chars)
 
 #### `search_stackoverflow(query: str, sort: str) -> dict`
 Searches Stack Overflow for questions.
@@ -117,13 +122,13 @@ Searches Stack Overflow for questions.
   - `query` - Search query string
   - `sort` - Sort by (default: "relevance")
 - **Output**: Dictionary with query, total count, and question results
-- **Returns per question**: title, URL, score, answer count, is_answered, tags, body excerpt
+- **Returns per question**: title, URL, score, answer_count, is_answered, tags, body (truncated to 300 chars)
 
 #### `search_wikipedia(query: str) -> dict`
 Searches Wikipedia for articles.
 - **Input**: `query` - Search query string
 - **Output**: Dictionary with query and article results
-- **Returns per article**: title, URL, snippet, full content excerpt
+- **Returns per article**: title, URL, snippet, content (truncated to 1000 chars)
 
 #### `fetch_url_content(url: str) -> dict`
 Extracts and parses content from a URL.
